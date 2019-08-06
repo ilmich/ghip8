@@ -14,29 +14,36 @@ import (
 )
 
 type Chip8 struct {
-	// accessible registers
+	// Internal memory
 	Memory [4096]uint8
+	// V0 - VF registers
+	Register     [16]uint8 
+	// I register
+	I            uint16    
+	// Sound and delay counters
+	Delay, Sound uint8     
 
-	Register     [16]uint8 // V0 - VF
-	I            uint16    // I register
-	Delay, Sound uint8     //Sound and delay counters
-
-	//internal registers
-	Pc          uint16 // Program counter
-	Sp          uint8  //stack pointer
+	// Program counter
+	Pc          uint16 
+	// Stack pointer	
 	Stack       [16]uint16
-	VideoMemory [256]uint8 // 64x32 pixel video
+	// 64x32 pixel video memory
+	VideoMemory [256]uint8 
 
-	//program lenght
+	// Program lenght
 	PrgEnd uint16
 }
 
 // Instruction params
 type InstructionParm struct {
-	Addr uint16 //address 16bit
-	Byte uint8  // byte
-	Vx   uint8  // reg 1
-	Vy   uint8  // reg 2
+	//address 16bit
+	Addr uint16 
+	// byte
+	Byte uint8  
+	// reg 1
+	Vx   uint8  
+	// reg 2
+	Vy   uint8  
 }
 
 // Instruction struct
@@ -54,7 +61,7 @@ type Instruction struct {
 	Parse func(opcode uint16) InstructionParm
 	// print decompiled instruction
 	Print func(inst Instruction, parm InstructionParm)
-	//exec
+	// exec
 	Exec func(chip *Chip8, parm InstructionParm)
 }
 
@@ -365,7 +372,7 @@ func (chip *Chip8) Run() bool {
 	//end of program
 	return false
 }
-
+// Load program into internal memory
 func (chip *Chip8) Load(buffer []byte) {
 	x := copy(chip.Memory[512:], buffer)
 	chip.Pc = 512 // starting address for programs
