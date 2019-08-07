@@ -46,7 +46,7 @@ type InstructionParm struct {
 	Vy   uint8  
 }
 
-// Instruction struct
+// Instruction
 type Instruction struct {
 	Opcode uint16
 	// bitmask for opcode recognition
@@ -65,9 +65,7 @@ type Instruction struct {
 	Exec func(chip *Chip8, parm InstructionParm)
 }
 
-/*
-	All opcodes
-*/
+//All opcodes
 var istset = []Instruction{
 	{0x00EE, 0xFFFF, "RET", nil, print, nil},
 	{0x00E0, 0xFFFF, "CLS", nil, print, nil},
@@ -214,9 +212,8 @@ var istset = []Instruction{
 	{0xF029, 0xF0FF, "LD F, V%X", parseReg, printReg, nil},
 }
 
-/*
-	various print functions
-*/
+
+// various print functions
 func printAddr(inst Instruction, parm InstructionParm) {
 	fmt.Printf(inst.SymFmt, parm.Addr)
 }
@@ -241,23 +238,19 @@ func print2RegAndNibble(inst Instruction, parm InstructionParm) {
 	fmt.Printf(inst.SymFmt, parm.Vx, parm.Vy, parm.Byte)
 }
 
-/*
-	Parse one params in form of ?nnn where
-		nnn => 12bit value
-*/
+// Parse one params in form of ?nnn where
+//	nnn => 12bit value
 func parseAddr(opcode uint16) InstructionParm {
 	return InstructionParm{
 		Addr: opcode & 0x0FFF,
 	}
 }
 
-/*
-	Parse 3 params in form of ?xyn where
-		x => 4 bit registry number
-		y => 4 bit registry number
-		n => 4 bit nibble
 
-*/
+//	Parse 3 params in form of ?xyn where
+//		x => 4 bit registry number
+//		y => 4 bit registry number
+//		n => 4 bit nibble
 func parse2RegAndNibble(opcode uint16) InstructionParm {
 	return InstructionParm{
 		Vx:   uint8((opcode & 0x0F00) / 256),
@@ -266,12 +259,10 @@ func parse2RegAndNibble(opcode uint16) InstructionParm {
 	}
 }
 
-/*
-	Parse 2 params in form of ?xkk where
-		x => 4 bit registry number
-		kk => 8 bit value
 
-*/
+//	Parse 2 params in form of ?xkk where
+//		x => 4 bit registry number
+//		kk => 8 bit value
 func parseRegAndByte(opcode uint16) InstructionParm {
 	return InstructionParm{
 		Vx:   uint8((opcode & 0x0F00) / 256),
@@ -315,9 +306,8 @@ func (chip *Chip8) videoMemoryDump() {
 
 }
 
-/*
-	Decompile chip8 memory
-*/
+
+// Decompile loaded program
 func (chip *Chip8) Decompile() {
 	for chip.Pc < chip.PrgEnd {
 		// load the 2 byte opcode
@@ -340,11 +330,9 @@ func (chip *Chip8) Decompile() {
 	}
 }
 
-/*
-	Run chip8 programs
 
-	return true if there are more instruction to execute, otherwise return false
-*/
+// Execute a single instruction and increment program counter
+// return true if there are more instruction to execute, otherwise return false
 func (chip *Chip8) Run() bool {
 	if chip.Pc < chip.PrgEnd {
 		// load the 2 byte opcode
@@ -372,7 +360,8 @@ func (chip *Chip8) Run() bool {
 	//end of program
 	return false
 }
-// Load program into internal memory
+
+// Load program
 func (chip *Chip8) Load(buffer []byte) {
 	x := copy(chip.Memory[512:], buffer)
 	chip.Pc = 512 // starting address for programs
