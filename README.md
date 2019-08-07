@@ -1,8 +1,8 @@
-##About
+# About
 Ghip8 is a golang learning project that implement a chip8 interpreter/disassembler useful for developing a complete emulator.
 WARNING: the interpreter is incomplete, some opcodes aren't implemented yet so keep in mind that only few roms will work for now.
 
-##Example
+# Example
 ```
 	chip8 := &Chip8{}
 	
