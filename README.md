@@ -27,6 +27,7 @@ func main() {
 	
 	
 	if buffer, err := ioutil.ReadFile(*filename); err == nil {
+		chip8.Init()
 		chip8.Load(buffer)
 		if *decompile {
 			chip8.Decompile()

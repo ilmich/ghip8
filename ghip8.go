@@ -170,11 +170,11 @@ var istset = []Instruction{
 
 										// xor video memory with sprite
 										chip.VideoMemory[vidloc] = chip.VideoMemory[vidloc] ^ sprhi
-										chip.VideoMemory[vidloc+1] = chip.VideoMemory[vidloc+1] ^ sprlo
-										//dump video memory
-										chip.videoMemoryDump()
+										chip.VideoMemory[vidloc+1] = chip.VideoMemory[vidloc+1] ^ sprlo										
 
 									}
+									//dump video memory
+									chip.videoMemoryDump()
 									chip.Pc += 2
 								}},
 	{0xE09E, 0xF0FF, "SKP V%X", parseReg, printReg, nil},
@@ -209,7 +209,12 @@ var istset = []Instruction{
 									chip.Pc += 2
 								}},
 	{0xF033, 0xF0FF, "LD B, V%X", parseReg, printReg, nil},
-	{0xF029, 0xF0FF, "LD F, V%X", parseReg, printReg, nil},
+	{0xF029, 0xF0FF, "LD F, V%X", parseReg, printReg, func(chip *Chip8, parm InstructionParm) {
+									// set address of sprite for char in VX
+									// these sprites are loaded at memory location 0x000
+									chip.I = 0x000 + uint16((chip.Register[parm.Vx] * 5))
+									chip.Pc += 2
+								}},
 }
 
 
@@ -347,13 +352,12 @@ func (chip *Chip8) Run() bool {
 				parm = cmd.Parse(curOp)
 			} 
 			cmd.Print(cmd, parm)
+			fmt.Print("\n")
 			//exec instruction
 			cmd.Exec(chip, parm)
 		} else {
 			panic("Invalid opcode")
 		}
-
-		fmt.Print("\n")
 		
 		return true
 	}
@@ -361,8 +365,30 @@ func (chip *Chip8) Run() bool {
 	return false
 }
 
+func (chip *Chip8) Init() {
+	fmt.Println("Loading fonts")
+	font := []byte{0xF0,0x90,0x90,0x90,0xF0, // sprite for char '0'
+	               0x20,0x60,0x20,0x20,0x70, // sprite for char '1'
+		       0xF0,0x10,0xF0,0x80,0xF0, // sprite for char '2'
+		       0xF0,0x10,0xF0,0x10,0xF0, // sprite for char '3'
+		       0x90,0x90,0xF0,0x10,0x10, // sprite for char '4'
+		       0xF0,0x80,0xF0,0x10,0xF0, // sprite for char '5'
+		       0xF0,0x80,0xF0,0x90,0xF0, // sprite for char '6'
+		       0xF0,0x10,0x20,0x40,0x40, // sprite for char '7'
+		       0xF0,0x90,0xF0,0x90,0xF0, // sprite for char '8'
+		       0xF0,0x90,0xF0,0x10,0xF0, // sprite for char '9'
+		       0xF0,0x90,0xF0,0x90,0x90, // sprite for char 'A'
+		       0xE0,0x90,0xE0,0x90,0xE0, // sprite for char 'B'
+		       0xF0,0x80,0x80,0x80,0xF0, // sprite for char 'C'
+		       0xE0,0x90,0x90,0x90,0xE0, // sprite for char 'D'
+		       0xF0,0x80,0xF0,0x80,0xF0, // sprite for char 'E'
+		       0xF0,0x80,0xF0,0x80,0x80, // sprite for char 'F'
+			}
+	copy(chip.Memory[:], font)
+}
+
 // Load program
-func (chip *Chip8) Load(buffer []byte) {
+func (chip *Chip8) Load(buffer []byte) {		
 	x := copy(chip.Memory[512:], buffer)
 	chip.Pc = 512 // starting address for programs
 	chip.PrgEnd = 512 + uint16(x)
