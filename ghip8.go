@@ -100,6 +100,7 @@ var istset = []Instruction{
 									for idx, _ := range chip.VideoMemory {
 										chip.VideoMemory[idx] = 0
 									}
+									chip.Pc += 2
 								}},
 	{0x0000, 0xF000, "SYS 0x%03X", parseAddr, printAddr, nil},
 	{0x1000, 0xF000, "JP 0x%03X", parseAddr, printAddr, func(chip *Chip8, parm InstructionParm) {
@@ -469,13 +470,15 @@ func (chip *Chip8) Init() {
 	chip.Stack = &Stack{}
 	//start 60hertz clock
 	go func() {
-		if chip.Delay > 0 {
-			chip.Delay--
+		for {
+			if chip.Delay > 0 {
+				chip.Delay--
+			}
+			if chip.Sound > 0 {
+				chip.Sound--
+			}
+			time.Sleep( (1/60) * time.Second)
 		}
-		if chip.Sound > 0 {
-			chip.Sound--
-		}
-		time.Sleep( (1/60) * time.Second)
 	}()
 	
 }
