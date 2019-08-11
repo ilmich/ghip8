@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"time"
 )
 
 type Chip8 struct {
@@ -26,12 +27,36 @@ type Chip8 struct {
 	// Program counter
 	Pc          uint16 
 	// Stack pointer	
-	Stack       [16]uint16
+	Stack       *Stack
 	// 64x32 pixel video memory
 	VideoMemory [256]uint8 
 
 	// Program lenght
 	prgEnd uint16
+	
+	// keyboard
+	keyboard [16]uint8
+}
+
+// Stack is a basic LIFO stack that resizes as needed.
+type Stack struct {
+    nodes []uint16
+    count int
+}
+ 
+// Push adds a node to the stack.
+func (s *Stack) Push(n uint16) {
+    s.nodes = append(s.nodes[:s.count], n)
+    s.count++
+}
+  
+// Pop removes and returns a node from the stack in last to first order.
+func (s *Stack) Pop() uint16 {
+    if s.count == 0 {
+        return 0
+    }
+    s.count--
+    return s.nodes[s.count]
 }
 
 // Instruction params
@@ -60,20 +85,30 @@ type Instruction struct {
 	// parse param from opcode
 	Parse func(opcode uint16) InstructionParm
 	// print decompiled instruction
-	Print func(inst Instruction, parm InstructionParm)
+	Print func(inst Instruction, parm InstructionParm) string
 	// exec
 	Exec func(chip *Chip8, parm InstructionParm)
 }
 
 //All opcodes
 var istset = []Instruction{
-	{0x00EE, 0xFFFF, "RET", nil, print, nil},
-	{0x00E0, 0xFFFF, "CLS", nil, print, nil},
+	{0x00EE, 0xFFFF, "RET", nil, print, func(chip *Chip8, parm InstructionParm) {									
+									chip.Pc = chip.Stack.Pop()
+									chip.Pc += 2
+								}},
+	{0x00E0, 0xFFFF, "CLS", nil, print, func(chip *Chip8, parm InstructionParm) {
+									for idx, _ := range chip.VideoMemory {
+										chip.VideoMemory[idx] = 0
+									}
+								}},
 	{0x0000, 0xF000, "SYS 0x%03X", parseAddr, printAddr, nil},
 	{0x1000, 0xF000, "JP 0x%03X", parseAddr, printAddr, func(chip *Chip8, parm InstructionParm) {
 									chip.Pc = parm.Addr
 								}},
-	{0x2000, 0xF000, "CALL 0x%03X", parseAddr, printAddr, nil},
+	{0x2000, 0xF000, "CALL 0x%03X", parseAddr, printAddr, func(chip *Chip8, parm InstructionParm) {	
+									chip.Stack.Push(chip.Pc)
+									chip.Pc = parm.Addr
+								}},
 	{0x3000, 0xF000, "SE V%X, 0x%02X", parseRegAndByte, printRegAndByte,func(chip *Chip8, parm InstructionParm) {
 									if chip.Register[parm.Vx] == parm.Byte {
 										chip.Pc += 2
@@ -87,18 +122,18 @@ var istset = []Instruction{
 									chip.Pc += 2
 								}},
 	{0x5000, 0xF000, "SE V%X {, V%X}", parse2Reg, print2Reg, func(chip *Chip8, parm InstructionParm) {
-									if chip.Register[parm.Vx] == chip.Register[parm.Vy] {
+									if chip.Register[parm.Vx] == chip.Register[parm.Vy] {										
 										chip.Pc += 2
 									}
-									chip.Pc += 2
+									chip.Pc += 2									
 								}},
 	{0x6000, 0xF000, "LD V%X, 0x%02X", parseRegAndByte, printRegAndByte, func(chip *Chip8, parm InstructionParm) {
-									chip.Register[parm.Vx] = parm.Byte
+									chip.Register[parm.Vx] = parm.Byte	
 									chip.Pc += 2
 								}},
 	{0x7000, 0xF000, "ADD V%X, 0x%02X", parseRegAndByte, printRegAndByte, func(chip *Chip8, parm InstructionParm) {
 									chip.Register[parm.Vx] += parm.Byte
-									chip.Pc += 2
+									chip.Pc += 2									
 								}},
 	{0x8000, 0xF00F, "LD V%X, V%X", parse2Reg, print2Reg, func(chip *Chip8, parm InstructionParm) {
 									chip.Register[parm.Vx] = chip.Register[parm.Vy]
@@ -106,7 +141,7 @@ var istset = []Instruction{
 								}},
 	{0x8001, 0xF00F, "OR V%X, V%X", parse2Reg, print2Reg, func(chip *Chip8, parm InstructionParm) {
 									chip.Register[parm.Vx] |= chip.Register[parm.Vy]
-									chip.Pc += 2
+									chip.Pc += 2									
 								}},
 	{0x8002, 0xF00F, "AND V%X, V%X", parse2Reg, print2Reg, func(chip *Chip8, parm InstructionParm) {
 									chip.Register[parm.Vx] &= chip.Register[parm.Vy]
@@ -117,21 +152,34 @@ var istset = []Instruction{
 									chip.Pc += 2
 								}},
 	{0x8004, 0xF00F, "ADD V%X, V%X", parse2Reg, print2Reg, func(chip *Chip8, parm InstructionParm) {
-									chip.Register[15]=0
-									chip.Register[parm.Vx] += chip.Register[parm.Vy]
-									if (chip.Register[parm.Vx] > 255) {
-										chip.Register[15]=1
-										chip.Register[parm.Vx] &= 0xFF
+									chip.Register[15]=0									
+									if uint16(chip.Register[parm.Vx] + chip.Register[parm.Vy]) > 255 {
+										chip.Register[15]=1										
 									}
-									chip.Pc += 2
+									chip.Register[parm.Vx] += chip.Register[parm.Vy]
+									chip.Pc += 2									
 								}},
-	{0x8005, 0xF00F, "SUB V%X, V%X", parse2Reg, print2Reg, nil},
+	{0x8005, 0xF00F, "SUB V%X, V%X", parse2Reg, print2Reg, func(chip *Chip8, parm InstructionParm) {
+									chip.Register[15] = 0
+									if chip.Register[parm.Vx] > chip.Register[parm.Vy] {
+										chip.Register[15] = 1
+									}
+									chip.Register[parm.Vx] = chip.Register[parm.Vx] - chip.Register[parm.Vy]
+									chip.Pc += 2									
+								}},
 	{0x8006, 0xF00F, "SHR V%X {, V%X}", parse2Reg, print2Reg, func(chip *Chip8, parm InstructionParm) {
 									chip.Register[15] = chip.Register[parm.Vx] & 0x01
 									chip.Register[parm.Vx] = chip.Register[parm.Vx] >> 1
 									chip.Pc += 2
 								}},
-	{0x8007, 0xF00F, "SUBN V%X, V%X", parse2Reg, print2Reg, nil},
+	{0x8007, 0xF00F, "SUBN V%X, V%X", parse2Reg, print2Reg, func(chip *Chip8, parm InstructionParm) {
+									chip.Register[15] = 0
+									if chip.Register[parm.Vy] > chip.Register[parm.Vx] {
+										chip.Register[15] = 1									
+									} 
+									chip.Register[parm.Vx] = chip.Register[parm.Vy] - chip.Register[parm.Vx]
+									chip.Pc += 2									
+								}},
 	{0x800E, 0xF00F, "SHL V%X {, V%X}", parse2Reg, print2Reg, func(chip *Chip8, parm InstructionParm) {
 									chip.Register[15] = chip.Register[parm.Vx] >> 7
 									chip.Register[parm.Vx] = chip.Register[parm.Vx] << 1
@@ -141,7 +189,7 @@ var istset = []Instruction{
 									if chip.Register[parm.Vx] != chip.Register[parm.Vy] {
 										chip.Pc += 2
 									}
-									chip.Pc += 2
+									chip.Pc += 2									
 								}},
 	{0xA000, 0xF000, "LD I, 0x%03X", parseAddr, printAddr, func(chip *Chip8, parm InstructionParm) {
 									chip.I = parm.Addr
@@ -150,7 +198,7 @@ var istset = []Instruction{
 	{0xB000, 0xF000, "JP V0, 0x%03X", parseAddr, printAddr, func(chip *Chip8, parm InstructionParm) {
 									chip.Pc = uint16(chip.Register[0]) + parm.Addr
 								}},
-	{0xC000, 0xF000, "RND V%X, 0x%02X", parseRegAndByte, printRegAndByte, func(chip *Chip8, parm InstructionParm) {
+	{0xC000, 0xF000, "RND V%X, 0x%02X", parseRegAndByte, printRegAndByte, func(chip *Chip8, parm InstructionParm) {									
 									chip.Register[parm.Vx] = uint8(rand.Intn(255)) & parm.Byte
 									chip.Pc += 2
 								}},
@@ -173,37 +221,56 @@ var istset = []Instruction{
 										chip.VideoMemory[vidloc+1] = chip.VideoMemory[vidloc+1] ^ sprlo										
 
 									}
-									//dump video memory
-									chip.videoMemoryDump()
 									chip.Pc += 2
 								}},
-	{0xE09E, 0xF0FF, "SKP V%X", parseReg, printReg, nil},
-	{0xE0A1, 0xF0FF, "SKNP V%X", parseReg, printReg, nil},
-	{0xF00A, 0xF00F, "LD V%X, K", parseReg, printReg, nil},
+	{0xE09E, 0xF0FF, "SKP V%X", parseReg, printReg, func(chip *Chip8, parm InstructionParm) {
+									// check keyboard down
+									if chip.keyboard[chip.Register[parm.Vx]] == 1 {
+										chip.Pc += 2
+									}
+									chip.Pc += 2									
+								}},
+	{0xE0A1, 0xF0FF, "SKNP V%X", parseReg, printReg, func(chip *Chip8, parm InstructionParm) {
+									// check keyboard up
+									if chip.keyboard[chip.Register[parm.Vx]] == 0 {
+										chip.Pc += 2
+									}
+									chip.Pc += 2									
+								}},
+	{0xF00A, 0xF00F, "LD V%X, K", parseReg, printReg, func(chip *Chip8, parm InstructionParm) {
+									// check keyboard
+									for idx, value := range chip.keyboard {
+										if value != 0 {
+											chip.Register[parm.Vx] = uint8(idx)
+											chip.Pc += 2
+										}
+									}									
+								}},
 	{0xF007, 0xF00F, "LD V%X, DT", parseReg, printReg, func(chip *Chip8, parm InstructionParm) {
 									chip.Register[parm.Vx] = chip.Delay
-									chip.Pc += 2
+									chip.Pc += 2									
 								}},
+								
 	{0xF01E, 0xF0FF, "ADD I, V%X", parseReg, printReg, func(chip *Chip8, parm InstructionParm) {
 									chip.I += uint16(chip.Register[parm.Vx])
 									chip.Pc += 2
 								}},
 	{0xF018, 0xF0FF, "LD ST, V%X", parseReg, printReg, func(chip *Chip8, parm InstructionParm) {
 									chip.Sound = chip.Register[parm.Vx]
-									chip.Pc += 2
+									chip.Pc += 2									
 								}},
 	{0xF015, 0xF0FF, "LD DT, V%X", parseReg, printReg, func(chip *Chip8, parm InstructionParm) {
 									chip.Delay = chip.Register[parm.Vx]
-									chip.Pc += 2
+									chip.Pc += 2									
 								}},
 	{0xF065, 0xF0FF, "LD V%X, [I]", parseReg, printReg, func(chip *Chip8, parm InstructionParm) {
-									for idx := uint16(0); idx < uint16(parm.Vx); idx++ {
+									for idx := uint16(0); idx <= uint16(parm.Vx); idx++ {
 										chip.Register[idx] = chip.Memory[chip.I+idx]
 									}
 									chip.Pc += 2
 								}},
 	{0xF055, 0xF0FF, "LD [I], V%X", parseReg, printReg, func(chip *Chip8, parm InstructionParm) {
-									for idx := uint16(0); idx < uint16(parm.Vx); idx++ {
+									for idx := uint16(0); idx <= uint16(parm.Vx); idx++ {
 										chip.Memory[chip.I+idx] = chip.Register[idx] 
 									}
 									chip.Pc += 2
@@ -230,28 +297,28 @@ var istset = []Instruction{
 
 
 // various print functions
-func printAddr(inst Instruction, parm InstructionParm) {
-	fmt.Printf(inst.SymFmt, parm.Addr)
+func printAddr(inst Instruction, parm InstructionParm) string {
+	return fmt.Sprintf(inst.SymFmt, parm.Addr)
 }
 
-func print(inst Instruction, parm InstructionParm) {
-	fmt.Printf(inst.SymFmt)
+func print(inst Instruction, parm InstructionParm) string {
+	return fmt.Sprintf(inst.SymFmt)
 }
 
-func printReg(inst Instruction, parm InstructionParm) {
-	fmt.Printf(inst.SymFmt, parm.Vx)
+func printReg(inst Instruction, parm InstructionParm) string {
+	return fmt.Sprintf(inst.SymFmt, parm.Vx)
 }
 
-func print2Reg(inst Instruction, parm InstructionParm) {
-	fmt.Printf(inst.SymFmt, parm.Vx, parm.Vy)
+func print2Reg(inst Instruction, parm InstructionParm) string {
+	return fmt.Sprintf(inst.SymFmt, parm.Vx, parm.Vy)
 }
 
-func printRegAndByte(inst Instruction, parm InstructionParm) {
-	fmt.Printf(inst.SymFmt, parm.Vx, parm.Byte)
+func printRegAndByte(inst Instruction, parm InstructionParm) string {
+	return fmt.Sprintf(inst.SymFmt, parm.Vx, parm.Byte)
 }
 
-func print2RegAndNibble(inst Instruction, parm InstructionParm) {
-	fmt.Printf(inst.SymFmt, parm.Vx, parm.Vy, parm.Byte)
+func print2RegAndNibble(inst Instruction, parm InstructionParm) string {
+	return fmt.Sprintf(inst.SymFmt, parm.Vx, parm.Vy, parm.Byte)
 }
 
 // Parse one params in form of ?nnn where
@@ -334,9 +401,9 @@ func (chip *Chip8) Decompile() {
 		cmd, err := chip.findOp(curOp)
 		if err == nil { // founded command
 			if cmd.Parse != nil { // print decompiled opcode
-				cmd.Print(cmd, cmd.Parse(curOp))
+				fmt.Print(cmd.Print(cmd, cmd.Parse(curOp)))
 			} else {
-				cmd.Print(cmd, InstructionParm{})
+				fmt.Print(cmd.Print(cmd, InstructionParm{}))
 			}
 		}
 
@@ -349,12 +416,11 @@ func (chip *Chip8) Decompile() {
 
 // Execute a single instruction and increment program counter
 // return true if there are more instruction to execute, otherwise return false
-func (chip *Chip8) Run() bool {
+func (chip *Chip8) Run() (bool, string) {
 	if chip.Pc < chip.prgEnd {
 		// load the 2 byte opcode
 		curOp := uint16(chip.Memory[chip.Pc])*256 + uint16(chip.Memory[chip.Pc+1])
-		// dump memory
-		fmt.Printf("0x%04X: %04X ", chip.Pc, curOp)
+				
 		// decode func
 		cmd, err := chip.findOp(curOp)
 		if err == nil { // founded command
@@ -362,18 +428,16 @@ func (chip *Chip8) Run() bool {
 			if cmd.Parse != nil {
 				parm = cmd.Parse(curOp)
 			} 
-			cmd.Print(cmd, parm)
-			fmt.Print("\n")
+			cmddump := fmt.Sprintf("0x%04X: %04X %s", chip.Pc, curOp, cmd.Print(cmd, parm) )
 			//exec instruction
 			cmd.Exec(chip, parm)
+			return true, cmddump
 		} else {
 			panic("Invalid opcode")
-		}
-		
-		return true
+		}		
 	}
 	//end of program
-	return false
+	return false, ""
 }
 
 func (chip *Chip8) Init() {
@@ -395,7 +459,25 @@ func (chip *Chip8) Init() {
 		       0xF0,0x80,0xF0,0x80,0xF0, // sprite for char 'E'
 		       0xF0,0x80,0xF0,0x80,0x80, // sprite for char 'F'
 			}
+	// load fonts
 	copy(chip.Memory[:], font)
+
+	//set a sane random seed
+	rand.Seed(time.Now().UnixNano())
+
+	//create stack
+	chip.Stack = &Stack{}
+	//start 60hertz clock
+	go func() {
+		if chip.Delay > 0 {
+			chip.Delay--
+		}
+		if chip.Sound > 0 {
+			chip.Sound--
+		}
+		time.Sleep( (1/60) * time.Second)
+	}()
+	
 }
 
 // Load program returning the number of bytes loaded
