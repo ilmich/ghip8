@@ -31,7 +31,7 @@ type Chip8 struct {
 	VideoMemory [256]uint8 
 
 	// Program lenght
-	PrgEnd uint16
+	prgEnd uint16
 }
 
 // Instruction params
@@ -325,7 +325,7 @@ func (chip *Chip8) videoMemoryDump() {
 
 // Decompile loaded program
 func (chip *Chip8) Decompile() {
-	for chip.Pc < chip.PrgEnd {
+	for chip.Pc < chip.prgEnd {
 		// load the 2 byte opcode
 		curOp := uint16(chip.Memory[chip.Pc])*256 + uint16(chip.Memory[chip.Pc+1])
 		// dump memory
@@ -350,7 +350,7 @@ func (chip *Chip8) Decompile() {
 // Execute a single instruction and increment program counter
 // return true if there are more instruction to execute, otherwise return false
 func (chip *Chip8) Run() bool {
-	if chip.Pc < chip.PrgEnd {
+	if chip.Pc < chip.prgEnd {
 		// load the 2 byte opcode
 		curOp := uint16(chip.Memory[chip.Pc])*256 + uint16(chip.Memory[chip.Pc+1])
 		// dump memory
@@ -398,10 +398,11 @@ func (chip *Chip8) Init() {
 	copy(chip.Memory[:], font)
 }
 
-// Load program
-func (chip *Chip8) Load(buffer []byte) {		
+// Load program returning the number of bytes loaded
+func (chip *Chip8) Load(buffer []byte) int {		
 	x := copy(chip.Memory[512:], buffer)
 	chip.Pc = 512 // starting address for programs
-	chip.PrgEnd = 512 + uint16(x)
+	chip.prgEnd = 512 + uint16(x)
 	fmt.Printf("Loaded %d bytes\n", x)
+	return x
 }
