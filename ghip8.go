@@ -208,7 +208,18 @@ var istset = []Instruction{
 									}
 									chip.Pc += 2
 								}},
-	{0xF033, 0xF0FF, "LD B, V%X", parseReg, printReg, nil},
+								
+								
+	{0xF033, 0xF0FF, "LD B, V%X", parseReg, printReg, func(chip *Chip8, parm InstructionParm) {
+									// store BCD of Vx into I, I+1, I+2									
+									value := chip.Register[parm.Vx]
+									chip.Memory[chip.I] = value / 100
+									value = value - chip.Memory[chip.I] * 100
+									chip.Memory[chip.I+1] = value / 10
+									value = value - chip.Memory[chip.I+1] * 10
+									chip.Memory[chip.I+2] = value
+									chip.Pc += 2
+								}},
 	{0xF029, 0xF0FF, "LD F, V%X", parseReg, printReg, func(chip *Chip8, parm InstructionParm) {
 									// set address of sprite for char in VX
 									// these sprites are loaded at memory location 0x000
