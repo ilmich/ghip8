@@ -497,7 +497,7 @@ func (chip *Chip8) Init() {
 			if chip.Sound > 0 {
 				chip.Sound--
 			}
-			time.Sleep( (1/60) * time.Second)
+			time.Sleep( 16 * time.Millisecond )
 		}
 	}()
 	
