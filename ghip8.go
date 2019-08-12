@@ -434,7 +434,7 @@ func (chip *Chip8) Decompile() {
 
 
 // Execute a single instruction and increment program counter
-// return true if there are more instruction to execute, otherwise return false
+// return a boolean that is true if there are more instruction to execute, and the string that represent the opcode executed (useful for debugging purpose)
 func (chip *Chip8) Run() (bool, string) {
 	if chip.pc < chip.prgEnd {
 		// load the 2 byte opcode
@@ -459,6 +459,7 @@ func (chip *Chip8) Run() (bool, string) {
 	return false, ""
 }
 
+// Inizialize the interpreter
 func (chip *Chip8) Init() {
 	fmt.Println("Loading fonts")
 	font := []byte{0xF0,0x90,0x90,0x90,0xF0, // sprite for char '0'
@@ -511,6 +512,7 @@ func (chip *Chip8) Load(buffer []byte) int {
 	return x
 }
 
+// tell the interpreter that some key are pressed
 func (chip *Chip8) KeyPressed(key rune) {	
 	if key == '9' {
 		for idx, _ := range chip.keyboard {
