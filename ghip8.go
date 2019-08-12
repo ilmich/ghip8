@@ -205,21 +205,35 @@ var istset = []Instruction{
 								}},
 	{0xD000, 0xF000, "DRW V%X, V%X, %X", parse2RegAndNibble, print2RegAndNibble, func(chip *Chip8, parm InstructionParm) {
 									// loop
+									
 									for idx := uint8(0); idx < parm.Byte; idx++ {
 										//video memory location
-										vidloc := ((chip.Register[parm.Vy] + uint8(idx)) * 8) + 
-												chip.Register[parm.Vx]/8
-
+										y := chip.Register[parm.Vy] + idx
+										/*if ( y > 31							 ) {
+											y = 0
+										}*/
+										vidlochi := (y * 8) + chip.Register[parm.Vx]/8
+										vidloclo := vidlochi + 1
+										if vidloclo == ( y + 1 ) * 8 {
+											vidloclo = y * 8
+										}
+																							
 										// load line of sprite
 										spr := chip.Memory[chip.I+uint16(idx)]
 
 										//shift sprite according to x coordinates
 										sprhi := (spr >> (chip.Register[parm.Vx] % 8))
 										sprlo := (spr << (8 - chip.Register[parm.Vx]%8))
-
+										
+										//check collitions
+										chip.Register[15]=0
+										if (chip.VideoMemory[vidlochi] ^ sprhi != chip.VideoMemory[vidlochi] | sprhi) ||
+										   (chip.VideoMemory[vidloclo] ^ sprlo != chip.VideoMemory[vidloclo] | sprlo) {
+											chip.Register[15]=1   
+										}
 										// xor video memory with sprite
-										chip.VideoMemory[vidloc] = chip.VideoMemory[vidloc] ^ sprhi
-										chip.VideoMemory[vidloc+1] = chip.VideoMemory[vidloc+1] ^ sprlo										
+										chip.VideoMemory[vidlochi] = chip.VideoMemory[vidlochi] ^ sprhi
+										chip.VideoMemory[vidloclo] = chip.VideoMemory[vidloclo] ^ sprlo										
 
 									}
 									chip.Pc += 2
@@ -229,17 +243,21 @@ var istset = []Instruction{
 									if chip.keyboard[chip.Register[parm.Vx]] == 1 {
 										chip.Pc += 2
 									}
+									// reset keyboard
+									chip.keyboard[chip.Register[parm.Vx]] = 0
 									chip.Pc += 2									
 								}},
 	{0xE0A1, 0xF0FF, "SKNP V%X", parseReg, printReg, func(chip *Chip8, parm InstructionParm) {
-									// check keyboard up
-									if chip.keyboard[chip.Register[parm.Vx]] == 0 {
+									// check keyboard up									
+									if chip.keyboard[chip.Register[parm.Vx]] == 0 {										
 										chip.Pc += 2
 									}
+									// reset keyboard
+									chip.keyboard[chip.Register[parm.Vx]] = 0
 									chip.Pc += 2									
 								}},
 	{0xF00A, 0xF00F, "LD V%X, K", parseReg, printReg, func(chip *Chip8, parm InstructionParm) {
-									// check keyboard
+									// check keyboard									
 									for idx, value := range chip.keyboard {
 										if value != 0 {
 											chip.Register[parm.Vx] = uint8(idx)
@@ -468,6 +486,7 @@ func (chip *Chip8) Init() {
 
 	//create stack
 	chip.Stack = &Stack{}
+	
 	//start 60hertz clock
 	go func() {
 		for {
@@ -490,4 +509,46 @@ func (chip *Chip8) Load(buffer []byte) int {
 	chip.prgEnd = 512 + uint16(x)
 	fmt.Printf("Loaded %d bytes\n", x)
 	return x
+}
+
+func (chip *Chip8) KeyPressed(key rune) {	
+	if key == '9' {
+		for idx, _ := range chip.keyboard {
+			chip.keyboard[idx]=0
+		}
+	} 
+	switch key {
+		case '0':
+			chip.keyboard[0x00]=1	
+		case '1':
+			chip.keyboard[0x01]=1	
+		case '2':
+			chip.keyboard[0x02]=1	
+		case '3':
+			chip.keyboard[0x03]=1	
+		case '4':
+			chip.keyboard[0x04]=1	
+		case '5':
+			chip.keyboard[0x05]=1	
+		case '6':
+			chip.keyboard[0x06]=1	
+		case '7':
+			chip.keyboard[0x07]=1	
+		case '8':
+			chip.keyboard[0x08]=1	
+		case '9':
+			chip.keyboard[0x09]=1	
+		case 'A':
+			chip.keyboard[0x0A]=1	
+		case 'B':
+			chip.keyboard[0x0B]=1
+		case 'C':
+			chip.keyboard[0x0C]=1
+		case 'D':
+			chip.keyboard[0x0D]=1
+		case 'E':
+			chip.keyboard[0x0E]=1	
+		case 'F':
+			chip.keyboard[0x0F]=1
+	}		
 }
