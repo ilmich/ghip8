@@ -1,7 +1,7 @@
 # About
-Ghip8 is a golang learning project that implement a Chip8 interpreter/disassembler useful for developing a complete emulator.
-Chip8 can be considered one of the first game engine 2D developed by Joseph Weisbecker for the COSMAC VIP.
-More information on
+Ghip8 is a golang learning project that implement a Chip8 interpreter/disassembler useful for developing a complete emulator.  
+Chip8 can be considered one of the first game engine 2D developed by Joseph Weisbecker for the COSMAC VIP.  
+More information on  
 
 https://en.wikipedia.org/wiki/CHIP-8  
 http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#1.0
