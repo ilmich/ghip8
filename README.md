@@ -100,5 +100,6 @@ func main() {
 }
 ```
 ![Chip8 Sample Screenshot](screenshot.jpg)
+![Chip8 Sample Screenshot](screenshot2.jpg)
 # Documentation
 This library is very simple, and in my opinion the above example is self explanatory, but there is also a [godoc](https://godoc.org/github.com/ilmich/ghip8)
