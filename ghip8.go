@@ -508,11 +508,6 @@ func (chip *Chip8) Load(buffer []byte) int {
 
 // tell the interpreter that some key are pressed
 func (chip *Chip8) KeyPressed(key rune) {
-	if key == '9' {
-		for idx, _ := range chip.keyboard {
-			chip.keyboard[idx] = 0
-		}
-	}
 	switch key {
 	case '0':
 		chip.keyboard[0x00] = 1
