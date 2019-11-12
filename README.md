@@ -1,5 +1,5 @@
 # About
-Ghip8 is a golang learning project that implement a Chip8 interpreter/disassembler useful for developing a complete emulator.  
+Ghip8 is a golang learning project that implements a Chip8 interpreter/disassembler useful for developing a complete emulator.  
 Chip8 can be considered one of the first game engine 2D developed by Joseph Weisbecker for the COSMAC VIP.  
 More information on  
 
@@ -7,7 +7,7 @@ https://en.wikipedia.org/wiki/CHIP-8
 http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#1.0
 
 # Example
-This is a full working example of emulator that run on terminal thanks to the superb [termbox-go](https://github.com/nsf/termbox-go)
+This is a full working example of emulator that runs on terminal thanks to the superb [termbox-go](https://github.com/nsf/termbox-go)
 ```
 package main
 
@@ -102,4 +102,4 @@ func main() {
 ![Chip8 Sample Screenshot](screenshot.jpg)
 ![Chip8 Sample Screenshot](screenshot2.jpg)
 # Documentation
-This library is very simple, and in my opinion the above example is self explanatory, but there is also a [godoc](https://godoc.org/github.com/ilmich/ghip8)
+This library is very simple, and in my opinion the above example is self-explanatory, but there is also a [godoc](https://godoc.org/github.com/ilmich/ghip8)
